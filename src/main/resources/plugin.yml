@@ -1,0 +1,4 @@
+name: simple-plugin
+version: 1.0-SNAPSHOT
+author: viviridian
+main: space.vvn.Main
