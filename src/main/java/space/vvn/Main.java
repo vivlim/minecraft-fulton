@@ -8,15 +8,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 public class Main extends JavaPlugin implements Listener {
-	
-	@EventHandler
-	public void onLogin(PlayerJoinEvent event) {
-		event.getPlayer().sendMessage("hello!");
-	}
+    
+    @EventHandler
+    public void onLogin(PlayerJoinEvent event) {
+        event.getPlayer().sendMessage("hello!");
+    }
 
     @Override
     public void onEnable() {
-		getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(this, this);
     }
 
 }
