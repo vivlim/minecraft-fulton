@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>simple-plugin</artifactId>
+    <artifactId>fulton-recovery</artifactId>
     <groupId>space.vvn</groupId>
     <version>1.0-SNAPSHOT</version>
     
@@ -60,7 +60,7 @@
                 <artifactId>maven-antrun-plugin</artifactId>
                 <configuration>
                     <tasks>
-                        <copy file="target/simple-plugin-1.0-SNAPSHOT.jar" todir="d:\mcdev\server\plugins"/>
+                        <copy file="target/fulton-recovery-1.0-SNAPSHOT.jar" todir="d:\mcdev\server\plugins"/>
                     </tasks>
                 </configuration>
                 <executions>

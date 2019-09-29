@@ -4,4 +4,4 @@ published as https://mvnrepository.com/artifact/ro.coderdojo.spigot/spigot-templ
 
 after you clone this, you need to run [buildtools](https://www.spigotmc.org/wiki/buildtools/) if you haven't on this machine yet (for the specific version of bukkit/spigot you are targeting)
 
-and string-replace `simple-plugin` :)
+and string-replace `fulton-recovery` :)

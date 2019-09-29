@@ -1,4 +1,7 @@
-name: simple-plugin
+name: fulton-recovery
 version: 1.0-SNAPSHOT
 author: viviridian
 main: space.vvn.Main
+commands:
+  fulton:
+    description: fulton recovery system
