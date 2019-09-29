@@ -50,7 +50,7 @@ public class FultonCommand implements CommandExecutor {
         }
 
         Entity target = entities.get(0); // just take the first one. probably not optimal
-        fulton.ScheduleFultonForEntity(target);
+        fulton.ScheduleFultonForEntity(player, target, fulton.home);
 
         return false;
     }

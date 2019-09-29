@@ -28,6 +28,7 @@ public class Main extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
 
         this.getCommand("fulton").setExecutor(new FultonCommand(controller));
+        this.getCommand("fulton_home").setExecutor(new FultonHomeCommand(controller));
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -39,7 +40,7 @@ public class Main extends JavaPlugin implements Listener {
         }
 
         Entity target = event.getRightClicked();
-        controller.ScheduleFultonForEntity(target);
+        controller.ScheduleFultonForEntity(p, target, controller.home);
 
     }
 }

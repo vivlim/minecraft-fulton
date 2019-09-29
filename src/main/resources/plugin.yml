@@ -5,3 +5,5 @@ main: space.vvn.Main
 commands:
   fulton:
     description: fulton recovery system
+  fulton_home:
+    description: set home for fulton recovery system
