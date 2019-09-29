@@ -27,11 +27,10 @@ import org.bukkit.util.Vector;
 
 public class FultonCommand implements CommandExecutor {
 
-    private JavaPlugin plugin;
-    private Player player;
+    private FultonController fulton;
 
-    public FultonCommand(JavaPlugin plugin) {
-        this.plugin = plugin;
+    public FultonCommand(FultonController fulton) {
+        this.fulton = fulton;
     }
     
     @Override
@@ -40,7 +39,6 @@ public class FultonCommand implements CommandExecutor {
             return false;
         }
         Player player = (Player) sender;
-        this.player = player;
 
         List<Entity> entities = getEntitiesInLineOfSight(player);
         int numEntities = entities.size();
@@ -52,34 +50,7 @@ public class FultonCommand implements CommandExecutor {
         }
 
         Entity target = entities.get(0); // just take the first one. probably not optimal
-
-        // config
-        int numSeconds = 5;
-        int whenToYankSeconds = 3; // how many seconds in to start the yank.
-        int numIterationsPerSecond = 8;
-        Vector beforeYankVector = new Vector(0, 0.1, 0);
-        Vector afterYankVector = new Vector(0, 6, 0);
-
-        // details
-        int numIterations = numSeconds * numIterationsPerSecond;
-        int whenToYankIterations = whenToYankSeconds * numIterationsPerSecond;
-        int numTicksPerSecond = 20;
-        int numTicksPerIteration = numTicksPerSecond / numIterationsPerSecond;
-
-        Location l = target.getLocation();
-        l.getWorld().playEffect(l, Effect.MOBSPAWNER_FLAMES, 31);
-        for (int i = 0; i < numIterations; i++){
-            if (i >= whenToYankIterations){
-                scheduleFultonEffect(target, i * numTicksPerIteration);
-                scheduleVelocityChange(target, afterYankVector, i * numTicksPerIteration);
-            }
-            else
-            {
-                scheduleVelocityChange(target, beforeYankVector, i * numTicksPerIteration);
-            }
-        }
-
-        player.sendMessage("zwoop");
+        fulton.ScheduleFultonForEntity(target);
 
         return false;
     }
@@ -103,29 +74,5 @@ public class FultonCommand implements CommandExecutor {
         double dot = toEntity.normalize().dot(eye.getDirection());
 
         return dot > 0.90D;
-    }
-
-    private void scheduleVelocityChange(Entity entity, Vector vector, int delayServerTicks){
-        // 20 ticks per second
-        // one tick is about 0.05 seconds.
-        // https://minecraft.gamepedia.com/Tick
-
-        this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-            public void run() {
-                entity.setVelocity(vector);
-                player.sendMessage(String.format("setting entity velocity to (%f, %f, %f)", vector.getX(), vector.getY(), vector.getZ()));
-            }
-        }, delayServerTicks);
-
-    }
-
-    private void scheduleFultonEffect(Entity entity, int delayServerTicks){
-        this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-            public void run() {
-                Location l = entity.getLocation();
-                l.getWorld().playEffect(l, Effect.SMOKE, 31);
-            }
-        }, delayServerTicks);
-
     }
 }
