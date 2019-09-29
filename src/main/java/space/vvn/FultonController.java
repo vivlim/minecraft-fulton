@@ -1,9 +1,12 @@
 package space.vvn;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 
@@ -40,6 +43,7 @@ public class FultonController {
     private JavaPlugin plugin;
     public Block home; // todo: more sophisticated per-player home and persistence
     private HashSet<Entity> fultoningEntities = new HashSet<Entity>();
+    private HashMap<String, Queue<Entity>> dropPointEntityCache = new HashMap<String, Queue<Entity>>();
 
     public FultonController(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -50,11 +54,6 @@ public class FultonController {
             player.sendMessage("A Fulton Recovery destination has not been set.");
             return;
         }
-
-        if (fultoningEntities.contains(target)){
-            return;
-        }
-        fultoningEntities.add(target);
 
         // config
         int numSeconds = 4;
@@ -81,6 +80,14 @@ public class FultonController {
             player.sendMessage("Cannot use Fulton Recovery without an unobstructed view of the sky above the recipient.");
             return;
         }
+
+        if (fultoningEntities.contains(target)){
+            player.sendMessage("Entity already being fultoned");
+            return;
+        }
+
+        // this is the point of no return! we *have* to do something with this entity then remove it from fultoningEntities.
+        fultoningEntities.add(target);
 
         // Assign a custom name so it doesn't get despawned
         if (target.getCustomName() == null){
@@ -126,21 +133,76 @@ public class FultonController {
     public List<DropPoint> getDropPoints(Player player){
         val config = this.plugin.getConfig();
         val settingPrefix = String.format("player.%s.drop-points.%s", player.getName(), player.getWorld().getName());
-        sendDebugMessage(player, settingPrefix);
+        //sendDebugMessage(player, settingPrefix);
         val dropPointConfigSection = config.getConfigurationSection(settingPrefix);
         Set<String> dropPoints = dropPointConfigSection.getKeys(false);
 
         List<DropPoint> result = new ArrayList<DropPoint>();
         for (String name : dropPoints){
-            sendDebugMessage(player, String.format("drop point: %s", name));
+            //sendDebugMessage(player, String.format("drop point: %s", name));
             String dropPointSetting = String.format("%s.%s", settingPrefix, name);
             Vector vec = dropPointConfigSection.getVector(name);
             Location loc = new Location(player.getWorld(), vec.getBlockX(), vec.getBlockY(), vec.getBlockZ());
 
-            result.add(new DropPoint(name, loc));
+            result.add(new DropPoint(name, loc, player));
         }
 
         return result;
+    }
+
+    private Queue<Entity> getCachedDropPointEntities(DropPoint point){
+        final int radius = 10;
+        Queue<Entity> entities;
+        String cacheKey = String.format("%s_%s", point.getOwner().getName(), point.getName());
+        if (!dropPointEntityCache.containsKey(cacheKey)){
+            //sendDebugMessage(point.getOwner(), "creating new dropPointEntityCache");
+            entities = new LinkedList<Entity>();
+            dropPointEntityCache.put(cacheKey, entities);
+        }
+        else {
+            //sendDebugMessage(point.getOwner(), "reusing dropPointEntityCache");
+            entities = dropPointEntityCache.get(cacheKey);
+        }
+
+        //sendDebugMessage(point.getOwner(), String.format("queue size: %d", entities.size()));
+        if (entities.isEmpty()){
+            // Okay, need to fetch entities from the drop point.
+            //sendDebugMessage(point.getOwner(), String.format("Fetching entities"));
+
+            val world = point.getLocation().getWorld();
+            val nearEntities = world.getNearbyEntities(point.getLocation(), radius, radius, radius);
+            //sendDebugMessage(point.getOwner(), String.format("got %d", nearEntities.size()));
+
+            for (val e : nearEntities){
+                entities.add(e);
+            }
+        }
+        return entities;
+    }
+
+    public Entity getEntityNearDropPoint(DropPoint point){
+        val entities = getCachedDropPointEntities(point);
+
+        if (entities.isEmpty()){
+            return null;
+        }
+        return entities.peek();
+    }
+
+    public Entity getNextEntityNearDropPoint(DropPoint point){
+        var entities = getCachedDropPointEntities(point);
+
+        if (entities.isEmpty()){
+            return null;
+        }
+        entities.remove();
+
+        if (entities.isEmpty()){
+            // re-cache
+            entities = getCachedDropPointEntities(point);
+        }
+
+        return entities.peek();
     }
 
     private void scheduleVelocityChange(Entity entity, Vector vector, int delayServerTicks){
@@ -150,6 +212,11 @@ public class FultonController {
 
         this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
             public void run() {
+                if (!entity.isValid()){
+                    sendDebugMessage(entity, "entity not valid while going up");
+                    return;
+                }
+
                 entity.setVelocity(vector);
             }
         }, delayServerTicks);
@@ -169,7 +236,8 @@ public class FultonController {
     private void scheduleFultonDrop(Entity entity, Location destination, int delayServerTicks){
         this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
             public void run() {
-                Location teleportDestination = new Location(destination.getWorld(), destination.getX(), 255, destination.getZ());
+                val dropHeight = Math.min(255, destination.getY() + 50);
+                Location teleportDestination = new Location(destination.getWorld(), destination.getX(), dropHeight, destination.getZ());
                 debugPrintCoordinates(entity.getLocation(), "pre-teleport-location");
                 debugPrintCoordinates(teleportDestination, "teleportDestination");
                 entity.teleport(teleportDestination);
@@ -185,6 +253,10 @@ public class FultonController {
             double distanceToRelease = 1.8;
             public void run() {
                 //debugPrintCoordinates(entity.getLocation(), "softLanding entity loc");
+                if (!entity.isValid()){
+                    sendDebugMessage(entity, "uh oh entity not valid");
+                    return;
+                }
                 double distanceFromDestination = entity.getLocation().getY() - destination.getY();
                 if (distanceFromDestination <= distanceToEngageSoftLand){
                     entity.setVelocity(new Vector(0, -0.06, 0));
@@ -243,5 +315,6 @@ public class FultonController {
     public class DropPoint {
         @Getter private String name;
         @Getter private Location location;
+        @Getter private Player owner;
     }
 }
