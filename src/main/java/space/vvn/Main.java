@@ -1,7 +1,11 @@
 package space.vvn;
 
+import java.util.List;
 import java.util.logging.Level;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import space.vvn.FultonController.DropPoint;
+
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
@@ -24,6 +28,7 @@ public class Main extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        this.saveDefaultConfig();
         this.controller = new FultonController(this);
         getServer().getPluginManager().registerEvents(this, this);
 
@@ -40,7 +45,18 @@ public class Main extends JavaPlugin implements Listener {
         }
 
         Entity target = event.getRightClicked();
-        controller.ScheduleFultonForEntity(p, target, controller.home);
+
+        // Get default drop point for this player.
+        List<DropPoint> dropPoints = controller.getDropPoints(p);
+
+        if (dropPoints.size() == 0){
+            p.sendMessage("No drop points set.");
+            return;
+        }
+
+        DropPoint dp = dropPoints.get(0);
+
+        controller.ScheduleFultonForEntity(p, target, p.getWorld().getBlockAt(dp.getLocation()));
 
     }
 }

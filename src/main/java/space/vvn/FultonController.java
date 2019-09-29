@@ -3,7 +3,16 @@ package space.vvn;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
+
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.val;
+import lombok.var;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Effect;
@@ -104,7 +113,34 @@ public class FultonController {
             return;
         }
 
-        this.home = newHome;
+        saveDropPoint(player, newHome.getLocation(), "default");
+    }
+
+    private void saveDropPoint(Player player, Location location, String dropPointName){
+        val config = this.plugin.getConfig();
+        val dropPointSetting = String.format("player.%s.drop-points.%s.%s", player.getName(), location.getWorld().getName(), dropPointName);
+        config.set(dropPointSetting, location.toVector());
+        this.plugin.saveConfig();
+    }
+
+    public List<DropPoint> getDropPoints(Player player){
+        val config = this.plugin.getConfig();
+        val settingPrefix = String.format("player.%s.drop-points.%s", player.getName(), player.getWorld().getName());
+        sendDebugMessage(player, settingPrefix);
+        val dropPointConfigSection = config.getConfigurationSection(settingPrefix);
+        Set<String> dropPoints = dropPointConfigSection.getKeys(false);
+
+        List<DropPoint> result = new ArrayList<DropPoint>();
+        for (String name : dropPoints){
+            sendDebugMessage(player, String.format("drop point: %s", name));
+            String dropPointSetting = String.format("%s.%s", settingPrefix, name);
+            Vector vec = dropPointConfigSection.getVector(name);
+            Location loc = new Location(player.getWorld(), vec.getBlockX(), vec.getBlockY(), vec.getBlockZ());
+
+            result.add(new DropPoint(name, loc));
+        }
+
+        return result;
     }
 
     private void scheduleVelocityChange(Entity entity, Vector vector, int delayServerTicks){
@@ -201,5 +237,11 @@ public class FultonController {
 
         // If we're further than two blocks, that's too far.
         return distance > 2d;
+    }
+
+    @AllArgsConstructor(access = AccessLevel.PROTECTED)
+    public class DropPoint {
+        @Getter private String name;
+        @Getter private Location location;
     }
 }
