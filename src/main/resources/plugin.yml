@@ -2,6 +2,7 @@ name: fulton-recovery
 version: 1.0-SNAPSHOT
 author: viviridian
 main: space.vvn.Main
+api-version: 1.14
 commands:
   fulton:
     description: fulton recovery system

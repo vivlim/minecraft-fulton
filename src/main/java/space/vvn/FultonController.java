@@ -34,6 +34,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Snowball;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.util.Vector;
@@ -98,6 +99,9 @@ public class FultonController {
 
         target.setGravity(false);
 
+        Entity snowball = target.getWorld().spawnEntity(target.getLocation().clone().add(0, 1.7, 0), EntityType.SNOWBALL);
+        snowball.setGravity(false);
+
         l.getWorld().playEffect(l, Effect.MOBSPAWNER_FLAMES, 31);
         for (int i = 0; i < numIterations; i++){
             if (i >= whenToYankIterations){
@@ -108,7 +112,22 @@ public class FultonController {
             {
                 scheduleVelocityChange(target, beforeYankVector, i * numTicksPerIteration);
             }
+
+            if (i >= whenToYankIterations - (numIterationsPerSecond/3)){ // 1/3 of a second earlier, yank the snowball up.
+                scheduleVelocityChange(snowball, afterYankVector, i * numTicksPerIteration);
+            }
+            else
+            {
+                scheduleVelocityChange(snowball, beforeYankVector, i * numTicksPerIteration);
+            }
         }
+
+        // remove the snowball after lifting is done.
+        this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
+            public void run() {
+                snowball.remove();
+            }
+        }, numTicksPerIteration * numIterations);
 
         scheduleFultonDrop(target, destination.getLocation(), numTicksPerIteration * numIterations);
     }
