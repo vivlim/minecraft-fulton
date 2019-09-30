@@ -6,4 +6,5 @@ import org.bukkit.Location;
 public interface SummonableEntity {
     public boolean Summon(Player player, Location destination);
     public String getName();
+    public String getOrigin();
 }

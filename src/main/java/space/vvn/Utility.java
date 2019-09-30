@@ -6,6 +6,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 public class Utility {
+    private static boolean debugMessagesOn = false;
     /**
      * Check if a block has any blocks above it.
      */
@@ -26,16 +27,19 @@ public class Utility {
 
     // nasty debug logging methods.
     public static void sendDebugMessage(Entity anyEntity, String message){
+        if (!debugMessagesOn) { return; }
         Player p = anyEntity.getWorld().getPlayers().get(0);
         p.sendMessage(message);
     }
 
     public static void sendDebugMessage(Block anyEntity, String message){
+        if (!debugMessagesOn) { return; }
         Player p = anyEntity.getWorld().getPlayers().get(0);
         p.sendMessage(message);
     }
 
     public static void debugPrintCoordinates(Location coords, String label){
+        if (!debugMessagesOn) { return; }
         Player p = coords.getWorld().getPlayers().get(0);
         p.sendMessage(String.format("%s: %f %f %f", label, coords.getX(), coords.getY(), coords.getZ()));
     }

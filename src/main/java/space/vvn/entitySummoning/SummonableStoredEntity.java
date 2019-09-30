@@ -19,6 +19,10 @@ public class SummonableStoredEntity implements SummonableEntity {
         return storedEntity.getCustomName();
     }
 
+    @Override public String getOrigin() {
+        return "stasis";
+    }
+
     @Override public boolean Summon(Player player, Location destination){
         val me = destination.getWorld().spawnEntity(destination, storedEntity.getEntityType());
         me.setCustomName(storedEntity.getCustomName());

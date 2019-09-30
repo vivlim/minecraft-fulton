@@ -27,7 +27,9 @@ public class EntityStorageView {
         val config = this.plugin.getConfig();
         String settingKey = getStoredEntitiesConfigKey();
 
-        List<StoredEntity> storedEntities = (List<StoredEntity>)config.getList(settingKey);
+        List<?> configList = config.getList(settingKey);
+
+        List<StoredEntity> storedEntities = (List<StoredEntity>) configList;
         if (storedEntities == null){
             storedEntities = new LinkedList<StoredEntity>();
         }

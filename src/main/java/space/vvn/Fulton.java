@@ -5,6 +5,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Vehicle;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
@@ -28,6 +29,7 @@ public class Fulton {
     final Vector beforeYankVector = new Vector(0, 0.04, 0);
     final Vector afterYankVector = new Vector(0, 6, 0);
     final EntityType balloonEntityType = EntityType.CHICKEN;
+    final int numSecondsBeforeReleaseTimeout = 4;
 
     // details
     final int numIterations = numSeconds * numIterationsPerSecond;
@@ -49,10 +51,10 @@ public class Fulton {
 
         // Assign a custom name so it doesn't get despawned
         if (target.getCustomName() == null){
-            player.sendMessage("assigning custom name");
-            target.setCustomName(String.format("Fulton-recovered %s", target.getName()));
-            target.setCustomNameVisible(true);
+            target.setCustomName(String.format("%s", target.getName()));
+            //target.setCustomNameVisible(true);
         }
+
 
         target.setGravity(false);
 
@@ -90,18 +92,18 @@ public class Fulton {
 
     public boolean Validate(){
         if (target.getWorld() != destination.getWorld()){
-            player.sendMessage("Cannot use Fulton Recovery between worlds.");
+            player.sendMessage("Cannot recover between worlds.");
             return false;
         }
 
         // Check if sky is unobstructed
         if (Utility.isBlockObstructed(target.getWorld().getBlockAt(target.getLocation()))){
-            player.sendMessage("Cannot use Fulton Recovery without an unobstructed view of the sky above the recipient.");
+            player.sendMessage("Cannot recover without an unobstructed view of the sky above the target.");
             return false;
         }
 
         if (controller.getFultoningEntities().contains(target)){
-            player.sendMessage("Entity already being fultoned");
+            player.sendMessage("Entity already being recovered (or is stuck, maybe cannot reach the destination?)");
             return false;
         }
 
@@ -144,21 +146,45 @@ public class Fulton {
                 Location teleportDestination = new Location(destination.getWorld(), destination.getX(), dropHeight, destination.getZ());
                 Utility.debugPrintCoordinates(entity.getLocation(), "pre-teleport-location");
                 Utility.debugPrintCoordinates(teleportDestination, "teleportDestination");
-                entity.teleport(teleportDestination);
-                entity.setVelocity(new Vector(0, -3, 0));
-                scheduleSoftLanding(entity, destination, 1);
+
+                val passengers = target.getPassengers();
+                // If there are any passengers, kick them out before TP
+                for (val passenger : passengers){
+                    passenger.setGravity(false);
+                    entity.removePassenger(passenger);
+                }
+
+                try {
+                    entity.teleport(teleportDestination);
+                    entity.setVelocity(new Vector(0, -3, 0));
+                    scheduleSoftLanding(entity, destination, 1, 0);
+
+                    for (val passenger : passengers){
+                        passenger.setGravity(true);
+                        entity.addPassenger(passenger);
+                    }
+                }
+                catch (Exception e){
+                    player.sendMessage("Something went wrong during recovery.");
+                    System.out.println("Error during recovery");
+                    System.out.println(e);
+                    for (val passenger : passengers){
+                        passenger.teleport(destination);
+                        passenger.setGravity(true);
+                    }
+                }
             }
         }, delayServerTicks);
     }
 
-    private void scheduleSoftLanding(Entity entity, Location destination, int ticksBetween){
+    private void scheduleSoftLanding(Entity entity, Location destination, int ticksBetween, int iterations){
         this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
             double distanceToEngageSoftLand = 3.5;
             double distanceToRelease = 1.8;
             public void run() {
                 //debugPrintCoordinates(entity.getLocation(), "softLanding entity loc");
                 if (!entity.isValid()){
-                    Utility.sendDebugMessage(entity, "uh oh entity not valid");
+                    player.sendMessage(String.format("'%s' could not be delivered to the drop point, and is being stored in stasis.", entity.getCustomName()));
                     new EntityStorageView(player, entity.getWorld(), plugin).storeEntity(entity);
                     return;
                 }
@@ -173,14 +199,21 @@ public class Fulton {
                     entity.setFallDistance(0);
                 }
 
+                if (iterations % 5 == 0){
+                    entity.getWorld().playEffect(entity.getLocation(), Effect.SMOKE, 0);
+                }
+
                 // if we aren't at the release distance, schedule this again
-                if (distanceFromDestination > distanceToRelease){
-                    scheduleSoftLanding(entity, destination, ticksBetween);
+                // or if we're past the timeout for releasing. We should be near the ground by this point... something is probably just in the way
+                if (distanceFromDestination > distanceToRelease && iterations < numSecondsBeforeReleaseTimeout * numTicksPerSecond){
+                    scheduleSoftLanding(entity, destination, ticksBetween, iterations);
                 }
                 else {
                     entity.setGravity(true);
                     entity.setVelocity(new Vector(0, 0.1, 0));
                     controller.getFultoningEntities().remove(entity);
+
+                    player.sendMessage(String.format("'%s' delivered successfully.", entity.getCustomName()));
                 }
             }
         }, ticksBetween);

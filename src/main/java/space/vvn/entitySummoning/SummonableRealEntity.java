@@ -21,6 +21,10 @@ public class SummonableRealEntity implements SummonableEntity {
         return entity.getCustomName() == null ? entity.getName() : entity.getCustomName();
     }
 
+    @Override public String getOrigin() {
+        return "drop point"; // todo; replace with name of drop point once there is more than one
+    }
+
     @Override public boolean Summon(Player player, Location destination){
         if (!entity.isValid()){
             player.sendMessage(String.format("Could not send '%s', it doesn't seem to exist anymore?", entity.getCustomName()));

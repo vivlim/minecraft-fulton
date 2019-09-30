@@ -48,7 +48,7 @@ public class FultonController {
 
     @Getter private JavaPlugin plugin;
     @Getter private HashSet<Entity> fultoningEntities = new HashSet<Entity>(); // This could use some rework
-    private HashMap<String, Queue<SummonableEntity>> dropPointEntityCache = new HashMap<String, Queue<SummonableEntity>>();
+    private HashMap<String, LinkedList<SummonableEntity>> dropPointEntityCache = new HashMap<String, LinkedList<SummonableEntity>>();
 
     public FultonController(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -56,7 +56,7 @@ public class FultonController {
     
     public void ScheduleFultonForEntity(Player player, Entity target, Block destination){
         if (destination == null){
-            player.sendMessage("A Fulton Recovery destination has not been set.");
+            player.sendMessage("A destination has not been set.");
             return;
         }
 
@@ -69,7 +69,7 @@ public class FultonController {
     public void SetHome(Player player, Block newHome){
         // Check if sky is unobstructed
         if (Utility.isBlockObstructed(newHome)){
-            player.sendMessage("Cannot set Fulton Recovery drop point without an unobstructed view of the sky.");
+            player.sendMessage("Cannot set drop point without an unobstructed view of the sky.");
             return;
         }
 
@@ -103,7 +103,7 @@ public class FultonController {
     }
 
     private Queue<SummonableEntity> getCachedDropPointEntities(DropPoint point){
-        Queue<SummonableEntity> entities;
+        LinkedList<SummonableEntity> entities;
         String cacheKey = String.format("%s_%s", point.getOwner().getName(), point.getName());
         if (!dropPointEntityCache.containsKey(cacheKey)){
             //sendDebugMessage(point.getOwner(), "creating new dropPointEntityCache");
@@ -133,6 +133,8 @@ public class FultonController {
             for (val se : entityStorage.getStoredEntities()){
                 entities.add(new SummonableStoredEntity((StoredEntity)se, this));
             }
+
+            entities.sort((SummonableEntity e1, SummonableEntity e2) -> e1.getName().compareTo(e2.getName()));
         }
         return entities;
     }

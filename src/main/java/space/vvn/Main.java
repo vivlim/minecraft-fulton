@@ -6,10 +6,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 import lombok.val;
 import lombok.var;
 import space.vvn.entityStorage.EntityStorageView;
+import space.vvn.entityStorage.StoredEntity;
 import space.vvn.entitySummoning.SummonableStoredEntity;
 
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.Material;
+import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,10 +26,14 @@ import org.bukkit.inventory.EquipmentSlot;
 public class Main extends JavaPlugin implements Listener {
 
     private FultonController controller;
+
+    public Main(){
+        // Register any classes we need to deserialize
+        ConfigurationSerialization.registerClass(StoredEntity.class);
+    }
     
     @EventHandler
     public void onLogin(PlayerJoinEvent event) {
-        event.getPlayer().sendMessage("hello!");
     }
 
     @Override
@@ -59,6 +65,8 @@ public class Main extends JavaPlugin implements Listener {
         Entity target = event.getRightClicked();
         DropPoint dp = getDefaultDropPoint(p);
 
+        p.sendMessage(String.format("Recovering '%s'.", target.getCustomName() == null ? target.getName() : target.getCustomName()));
+
         controller.ScheduleFultonForEntity(p, target, p.getWorld().getBlockAt(dp.getLocation()));
 
     }
@@ -83,7 +91,7 @@ public class Main extends JavaPlugin implements Listener {
             event.setCancelled(true);
             p.sendMessage("sneak");
             val entity = controller.getEntityNearDropPoint(dp);
-            p.sendMessage(String.format("Retrieving: %s from %s", entity.getName(), dp.getName()));
+            p.sendMessage(String.format("Retrieving: %s from %s", entity.getName(), entity.getOrigin()));
             entity.Summon(p, p.getTargetBlock(null, 5).getLocation());
             //
 
@@ -93,7 +101,7 @@ public class Main extends JavaPlugin implements Listener {
         else if (event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR){
             event.setCancelled(true);
             val entity = controller.getNextEntityNearDropPoint(dp);
-            p.sendMessage(String.format("Selected: %s from %s", entity.getName(), dp.getName()));
+            p.sendMessage(String.format("Selected: %s from %s", entity.getName(), entity.getOrigin()));
         }
     }
 
