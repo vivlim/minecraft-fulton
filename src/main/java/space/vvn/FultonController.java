@@ -73,6 +73,7 @@ public class FultonController {
             return;
         }
 
+        player.sendMessage("Drop point has been set.");
         saveDropPoint(player, newHome.getLocation(), "default");
     }
 
