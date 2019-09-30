@@ -10,6 +10,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <m2e.apt.activation>disabled</m2e.apt.activation> <!-- not needed because we have lombok https://github.com/redhat-developer/vscode-java/issues/580#issuecomment-443302372 -->
     </properties>
 
     
