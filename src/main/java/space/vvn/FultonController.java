@@ -29,6 +29,7 @@ import org.bukkit.block.BlockState;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -41,9 +42,8 @@ import org.bukkit.util.Vector;
 public class FultonController {
 
     private JavaPlugin plugin;
-    public Block home; // todo: more sophisticated per-player home and persistence
     private HashSet<Entity> fultoningEntities = new HashSet<Entity>();
-    private HashMap<String, Queue<Entity>> dropPointEntityCache = new HashMap<String, Queue<Entity>>();
+    private HashMap<String, Queue<SummonableEntity>> dropPointEntityCache = new HashMap<String, Queue<SummonableEntity>>();
 
     public FultonController(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -78,20 +78,57 @@ public class FultonController {
         this.plugin.saveConfig();
     }
 
-    private void storeEntity(Player player, Entity entity){
-        val config = this.plugin.getConfig();
-        String dropPointSetting = String.format("player.%s.stored-entities.%s.%s", player.getName(), entity.getWorld().getName(), entity.getCustomName());
-        config.set(dropPointSetting + ".id", entity.getEntityId());
+    private String getStoredEntitiesConfigKey(Player player, World world){
+        return String.format("player.%s.stored-entities.%s", player, world);
+    }
 
-        val count = config.getInt(dropPointSetting + ".count");
-        config.set(dropPointSetting + ".count", count + 1);
+    private List<StoredEntity> getStoredEntities(Player player, World world){
+        val config = this.plugin.getConfig();
+        String settingKey = getStoredEntitiesConfigKey(player, world);
+
+        List<StoredEntity> storedEntities = (List<StoredEntity>)config.getList(settingKey);
+        if (storedEntities == null){
+            storedEntities = new LinkedList<StoredEntity>();
+        }
+        return storedEntities;
+    }
+
+    private void saveStoredEntities(Player player, World world, List<StoredEntity> list){
+        val config = this.plugin.getConfig();
+        String settingKey = getStoredEntitiesConfigKey(player, world);
+        config.set(settingKey, list);
         this.plugin.saveConfig();
+    }
+
+    private boolean removeStoredEntity(Player player, World world, StoredEntity entity){
+        val storedEntities = getStoredEntities(player, world);
+
+        for (var i = 0; i < storedEntities.size(); i++){
+            val e = storedEntities.get(i);
+
+            if (e == entity){
+                storedEntities.remove(i);
+                saveStoredEntities(player, world, storedEntities);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void storeEntity(Player player, Entity entity){
+        List<StoredEntity> storedEntities = getStoredEntities(player, entity.getWorld());
+
+        StoredEntity storedEntity = new StoredEntity(entity);
+        storedEntities.add(storedEntity);
+
+        saveStoredEntities(player, entity.getWorld(), storedEntities);
     }
 
     public List<DropPoint> getDropPoints(Player player){
         val config = this.plugin.getConfig();
         val settingPrefix = String.format("player.%s.drop-points.%s", player.getName(), player.getWorld().getName());
-        //sendDebugMessage(player, settingPrefix);
+        sendDebugMessage(player, settingPrefix);
         val dropPointConfigSection = config.getConfigurationSection(settingPrefix);
         Set<String> dropPoints = dropPointConfigSection.getKeys(false);
 
@@ -108,13 +145,13 @@ public class FultonController {
         return result;
     }
 
-    private Queue<Entity> getCachedDropPointEntities(DropPoint point){
+    private Queue<SummonableEntity> getCachedDropPointEntities(DropPoint point){
         final int radius = 10;
-        Queue<Entity> entities;
+        Queue<SummonableEntity> entities;
         String cacheKey = String.format("%s_%s", point.getOwner().getName(), point.getName());
         if (!dropPointEntityCache.containsKey(cacheKey)){
             //sendDebugMessage(point.getOwner(), "creating new dropPointEntityCache");
-            entities = new LinkedList<Entity>();
+            entities = new LinkedList<SummonableEntity>();
             dropPointEntityCache.put(cacheKey, entities);
         }
         else {
@@ -132,13 +169,17 @@ public class FultonController {
             //sendDebugMessage(point.getOwner(), String.format("got %d", nearEntities.size()));
 
             for (val e : nearEntities){
-                entities.add(e);
+                entities.add(new SummonableRealEntity(e));
+            }
+
+            for (val se : getStoredEntities(point.getOwner(), point.getOwner().getWorld())){
+                entities.add(new SummonableStoredEntity((StoredEntity)se));
             }
         }
         return entities;
     }
 
-    public Entity getEntityNearDropPoint(DropPoint point){
+    public SummonableEntity getEntityNearDropPoint(DropPoint point){
         val entities = getCachedDropPointEntities(point);
 
         if (entities.isEmpty()){
@@ -147,7 +188,7 @@ public class FultonController {
         return entities.peek();
     }
 
-    public Entity getNextEntityNearDropPoint(DropPoint point){
+    public SummonableEntity getNextEntityNearDropPoint(DropPoint point){
         var entities = getCachedDropPointEntities(point);
 
         if (entities.isEmpty()){
@@ -199,6 +240,72 @@ public class FultonController {
         @Getter private String name;
         @Getter private Location location;
         @Getter private Player owner;
+    }
+
+    public class StoredEntity implements ConfigurationSerializable {
+        @Getter private EntityType EntityType;
+        @Getter private String CustomName;
+
+        public StoredEntity(Entity entity){
+            this.EntityType = entity.getType();
+            this.CustomName = entity.getCustomName();
+        }
+
+        public StoredEntity(Map<String, Object> map){
+            this.EntityType = (EntityType)map.get("entityType");
+            this.CustomName = (String)map.get("customName");
+        }
+
+        @Override public Map<String, Object> serialize(){
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("entityType", EntityType);
+            map.put("customName", CustomName);
+            return map;
+        }
+
+        @Override public boolean equals(Object o){
+            if (!(o instanceof StoredEntity)){
+                return false;
+            }
+            val compareTo = (StoredEntity)o;
+            
+            return compareTo.getCustomName() == this.CustomName
+                && compareTo.getEntityType() == this.EntityType;
+        }
+    }
+
+    public interface SummonableEntity {
+        public boolean Summon(Player player, Location destination);
+        public String getName();
+    }
+
+    @AllArgsConstructor
+    public class SummonableStoredEntity implements SummonableEntity {
+        @Getter private StoredEntity storedEntity;
+
+        @Override public String getName() {
+            return storedEntity.getCustomName();
+        }
+
+        @Override public boolean Summon(Player player, Location destination){
+            val me = destination.getWorld().spawnEntity(destination, storedEntity.EntityType);
+            me.setCustomName(storedEntity.CustomName);
+            return true;
+        }
+    }
+
+    @AllArgsConstructor
+    public class SummonableRealEntity implements SummonableEntity {
+        @Getter private Entity entity;
+
+        @Override public String getName() {
+            return entity.getCustomName() == null ? entity.getName() : entity.getCustomName();
+        }
+
+        @Override public boolean Summon(Player player, Location destination){
+            ScheduleFultonForEntity(player, entity, entity.getWorld().getBlockAt(destination));
+            return true; // todo: return bool from sched
+        }
     }
 
     private class Fulton {
@@ -345,6 +452,7 @@ public class FultonController {
                     //debugPrintCoordinates(entity.getLocation(), "softLanding entity loc");
                     if (!entity.isValid()){
                         sendDebugMessage(entity, "uh oh entity not valid");
+                        storeEntity(player, entity);
                         return;
                     }
                     double distanceFromDestination = entity.getLocation().getY() - destination.getY();

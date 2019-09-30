@@ -83,13 +83,13 @@ public class Main extends JavaPlugin implements Listener {
             event.setCancelled(true);
             p.sendMessage("sneak");
             val entity = controller.getEntityNearDropPoint(dp);
-            p.sendMessage(String.format("Retrieving: %s from %s", entity.getCustomName() == null ? entity.getName() : entity.getCustomName(), dp.getName()));
-            controller.ScheduleFultonForEntity(p, entity, p.getTargetBlock(null, 5));
+            p.sendMessage(String.format("Retrieving: %s from %s", entity.getName(), dp.getName()));
+            entity.Summon(p, p.getTargetBlock(null, 5).getLocation());
         }
         else if (event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR){
             event.setCancelled(true);
-            Entity entity = controller.getNextEntityNearDropPoint(dp);
-            p.sendMessage(String.format("Selected: %s from %s", entity.getCustomName() == null ? entity.getName() : entity.getCustomName(), dp.getName()));
+            val entity = controller.getNextEntityNearDropPoint(dp);
+            p.sendMessage(String.format("Selected: %s from %s", entity.getName(), dp.getName()));
         }
     }
 
