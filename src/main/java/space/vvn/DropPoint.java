@@ -14,4 +14,6 @@ public class DropPoint {
     @Getter private String name;
     @Getter private Location location;
     @Getter private Player owner;
+
+    public final static int entityRadiusFromDropPoint = 10;
 }

@@ -11,23 +11,24 @@ import lombok.Getter;
 import lombok.val;
 
 public class StoredEntity implements ConfigurationSerializable {
-    @Getter private EntityType EntityType;
-    @Getter private String CustomName;
+    @Getter private EntityType entityType;
+    @Getter private String customName;
 
     public StoredEntity(Entity entity){
-        this.EntityType = entity.getType();
-        this.CustomName = entity.getCustomName();
+        this.entityType = entity.getType();
+        this.customName = entity.getCustomName();
     }
 
     public StoredEntity(Map<String, Object> map){
-        this.EntityType = (EntityType)map.get("entityType");
-        this.CustomName = (String)map.get("customName");
+        val entityTypeString = (String)map.get("entityType");
+        this.entityType = EntityType.valueOf(entityTypeString);
+        this.customName = (String)map.get("customName");
     }
 
     @Override public Map<String, Object> serialize(){
         Map<String, Object> map = new HashMap<String, Object>();
-        map.put("entityType", EntityType);
-        map.put("customName", CustomName);
+        map.put("entityType", entityType.toString());
+        map.put("customName", customName);
         return map;
     }
 
@@ -37,7 +38,7 @@ public class StoredEntity implements ConfigurationSerializable {
         }
         val compareTo = (StoredEntity)o;
         
-        return compareTo.getCustomName() == this.CustomName
-            && compareTo.getEntityType() == this.EntityType;
+        return compareTo.getCustomName() == this.customName
+            && compareTo.getEntityType() == this.entityType;
     }
 }

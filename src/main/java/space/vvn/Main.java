@@ -5,6 +5,8 @@ import java.util.logging.Level;
 import org.bukkit.plugin.java.JavaPlugin;
 import lombok.val;
 import lombok.var;
+import space.vvn.entityStorage.EntityStorageView;
+import space.vvn.entitySummoning.SummonableStoredEntity;
 
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.Material;
@@ -83,6 +85,10 @@ public class Main extends JavaPlugin implements Listener {
             val entity = controller.getEntityNearDropPoint(dp);
             p.sendMessage(String.format("Retrieving: %s from %s", entity.getName(), dp.getName()));
             entity.Summon(p, p.getTargetBlock(null, 5).getLocation());
+            //
+
+            // Wipe the recall selection queue, it needs to be refreshed
+            controller.wipeRecallSelectionQueue(dp);
         }
         else if (event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR){
             event.setCancelled(true);

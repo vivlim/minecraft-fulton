@@ -46,7 +46,7 @@ import org.bukkit.util.Vector;
 
 public class FultonController {
 
-    private JavaPlugin plugin;
+    @Getter private JavaPlugin plugin;
     @Getter private HashSet<Entity> fultoningEntities = new HashSet<Entity>(); // This could use some rework
     private HashMap<String, Queue<SummonableEntity>> dropPointEntityCache = new HashMap<String, Queue<SummonableEntity>>();
 
@@ -103,7 +103,6 @@ public class FultonController {
     }
 
     private Queue<SummonableEntity> getCachedDropPointEntities(DropPoint point){
-        final int radius = 10;
         Queue<SummonableEntity> entities;
         String cacheKey = String.format("%s_%s", point.getOwner().getName(), point.getName());
         if (!dropPointEntityCache.containsKey(cacheKey)){
@@ -122,11 +121,11 @@ public class FultonController {
             //sendDebugMessage(point.getOwner(), String.format("Fetching entities"));
 
             val world = point.getLocation().getWorld();
-            val nearEntities = world.getNearbyEntities(point.getLocation(), radius, radius, radius);
+            val nearEntities = world.getNearbyEntities(point.getLocation(), DropPoint.entityRadiusFromDropPoint, DropPoint.entityRadiusFromDropPoint, DropPoint.entityRadiusFromDropPoint);
             //sendDebugMessage(point.getOwner(), String.format("got %d", nearEntities.size()));
 
             for (val e : nearEntities){
-                entities.add(new SummonableRealEntity(e, this));
+                entities.add(new SummonableRealEntity(e, point, this));
             }
 
             val entityStorage = new EntityStorageView(point.getOwner(), point.getOwner().getWorld(), this.plugin);
@@ -162,4 +161,13 @@ public class FultonController {
 
         return entities.peek();
     }
+
+    public void wipeRecallSelectionQueue(DropPoint point){
+        // this is duped. todo refactor
+        String cacheKey = String.format("%s_%s", point.getOwner().getName(), point.getName());
+        if (dropPointEntityCache.containsKey(cacheKey)){
+            dropPointEntityCache.get(cacheKey).clear();
+        }
+    }
+    
 }
