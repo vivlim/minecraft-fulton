@@ -93,7 +93,6 @@ public class Main extends JavaPlugin implements Listener {
             val entity = controller.getEntityNearDropPoint(dp);
             p.sendMessage(String.format("Retrieving: %s from %s", entity.getName(), entity.getOrigin()));
             entity.Summon(p, p.getTargetBlock(null, 5).getLocation());
-            //
 
             // Wipe the recall selection queue, it needs to be refreshed
             controller.wipeRecallSelectionQueue(dp);

@@ -125,7 +125,9 @@ public class FultonController {
             //sendDebugMessage(point.getOwner(), String.format("got %d", nearEntities.size()));
 
             for (val e : nearEntities){
-                entities.add(new SummonableRealEntity(e, point, this));
+                if (!(e instanceof Player)){ // don't allow summoning players, ever.
+                    entities.add(new SummonableRealEntity(e, point, this));
+                }
             }
 
             val entityStorage = new EntityStorageView(point.getOwner(), point.getOwner().getWorld(), this.plugin);

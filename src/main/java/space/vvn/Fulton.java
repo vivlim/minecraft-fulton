@@ -206,7 +206,7 @@ public class Fulton {
                 // if we aren't at the release distance, schedule this again
                 // or if we're past the timeout for releasing. We should be near the ground by this point... something is probably just in the way
                 if (distanceFromDestination > distanceToRelease && iterations < numSecondsBeforeReleaseTimeout * numTicksPerSecond){
-                    scheduleSoftLanding(entity, destination, ticksBetween, iterations);
+                    scheduleSoftLanding(entity, destination, ticksBetween, iterations + 1);
                 }
                 else {
                     entity.setGravity(true);
