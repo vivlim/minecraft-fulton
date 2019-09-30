@@ -16,6 +16,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.val;
 import lombok.var;
+import space.vvn.entityStorage.EntityStorageView;
+import space.vvn.entityStorage.StoredEntity;
+import space.vvn.entitySummoning.SummonableEntity;
+import space.vvn.entitySummoning.SummonableRealEntity;
+import space.vvn.entitySummoning.SummonableStoredEntity;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Effect;
@@ -42,7 +47,7 @@ import org.bukkit.util.Vector;
 public class FultonController {
 
     private JavaPlugin plugin;
-    private HashSet<Entity> fultoningEntities = new HashSet<Entity>();
+    @Getter private HashSet<Entity> fultoningEntities = new HashSet<Entity>(); // This could use some rework
     private HashMap<String, Queue<SummonableEntity>> dropPointEntityCache = new HashMap<String, Queue<SummonableEntity>>();
 
     public FultonController(JavaPlugin plugin) {
@@ -55,7 +60,7 @@ public class FultonController {
             return;
         }
 
-        Fulton fulton = new Fulton(player, target, destination.getLocation(), this.plugin);
+        Fulton fulton = new Fulton(this, player, target, destination.getLocation(), this.plugin);
         if (fulton.Validate()){
             fulton.Start();
         }
@@ -63,7 +68,7 @@ public class FultonController {
 
     public void SetHome(Player player, Block newHome){
         // Check if sky is unobstructed
-        if (isBlockObstructed(newHome)){
+        if (Utility.isBlockObstructed(newHome)){
             player.sendMessage("Cannot set Fulton Recovery drop point without an unobstructed view of the sky.");
             return;
         }
@@ -78,64 +83,16 @@ public class FultonController {
         this.plugin.saveConfig();
     }
 
-    private String getStoredEntitiesConfigKey(Player player, World world){
-        return String.format("player.%s.stored-entities.%s", player, world);
-    }
-
-    private List<StoredEntity> getStoredEntities(Player player, World world){
-        val config = this.plugin.getConfig();
-        String settingKey = getStoredEntitiesConfigKey(player, world);
-
-        List<StoredEntity> storedEntities = (List<StoredEntity>)config.getList(settingKey);
-        if (storedEntities == null){
-            storedEntities = new LinkedList<StoredEntity>();
-        }
-        return storedEntities;
-    }
-
-    private void saveStoredEntities(Player player, World world, List<StoredEntity> list){
-        val config = this.plugin.getConfig();
-        String settingKey = getStoredEntitiesConfigKey(player, world);
-        config.set(settingKey, list);
-        this.plugin.saveConfig();
-    }
-
-    private boolean removeStoredEntity(Player player, World world, StoredEntity entity){
-        val storedEntities = getStoredEntities(player, world);
-
-        for (var i = 0; i < storedEntities.size(); i++){
-            val e = storedEntities.get(i);
-
-            if (e == entity){
-                storedEntities.remove(i);
-                saveStoredEntities(player, world, storedEntities);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private void storeEntity(Player player, Entity entity){
-        List<StoredEntity> storedEntities = getStoredEntities(player, entity.getWorld());
-
-        StoredEntity storedEntity = new StoredEntity(entity);
-        storedEntities.add(storedEntity);
-
-        saveStoredEntities(player, entity.getWorld(), storedEntities);
-    }
-
     public List<DropPoint> getDropPoints(Player player){
         val config = this.plugin.getConfig();
         val settingPrefix = String.format("player.%s.drop-points.%s", player.getName(), player.getWorld().getName());
-        sendDebugMessage(player, settingPrefix);
+        //sendDebugMessage(player, settingPrefix);
         val dropPointConfigSection = config.getConfigurationSection(settingPrefix);
         Set<String> dropPoints = dropPointConfigSection.getKeys(false);
 
         List<DropPoint> result = new ArrayList<DropPoint>();
         for (String name : dropPoints){
             //sendDebugMessage(player, String.format("drop point: %s", name));
-            String dropPointSetting = String.format("%s.%s", settingPrefix, name);
             Vector vec = dropPointConfigSection.getVector(name);
             Location loc = new Location(player.getWorld(), vec.getBlockX(), vec.getBlockY(), vec.getBlockZ());
 
@@ -169,11 +126,13 @@ public class FultonController {
             //sendDebugMessage(point.getOwner(), String.format("got %d", nearEntities.size()));
 
             for (val e : nearEntities){
-                entities.add(new SummonableRealEntity(e));
+                entities.add(new SummonableRealEntity(e, this));
             }
 
-            for (val se : getStoredEntities(point.getOwner(), point.getOwner().getWorld())){
-                entities.add(new SummonableStoredEntity((StoredEntity)se));
+            val entityStorage = new EntityStorageView(point.getOwner(), point.getOwner().getWorld(), this.plugin);
+
+            for (val se : entityStorage.getStoredEntities()){
+                entities.add(new SummonableStoredEntity((StoredEntity)se, this));
             }
         }
         return entities;
@@ -202,282 +161,5 @@ public class FultonController {
         }
 
         return entities.peek();
-    }
-
-
-    private static void sendDebugMessage(Entity anyEntity, String message){
-        Player p = anyEntity.getWorld().getPlayers().get(0);
-        p.sendMessage(message);
-    }
-
-    private static void sendDebugMessage(Block anyEntity, String message){
-        Player p = anyEntity.getWorld().getPlayers().get(0);
-        p.sendMessage(message);
-    }
-
-    private static void debugPrintCoordinates(Location coords, String label){
-        Player p = coords.getWorld().getPlayers().get(0);
-        p.sendMessage(String.format("%s: %f %f %f", label, coords.getX(), coords.getY(), coords.getZ()));
-    }
-
-    public boolean isBlockObstructed(Block target){
-
-        Location targetLocation = target.getLocation();
-        // Fetch the highest block at the target location, down by 1, because this will give you the air block above
-        Location highestBlockAtTargetLocation = target.getWorld().getHighestBlockAt(target.getLocation()).getLocation();
-        sendDebugMessage(target, String.format("target: %f %f %f. highest: %f %f %f", targetLocation.getX(), targetLocation.getY(), targetLocation.getZ(), highestBlockAtTargetLocation.getX(), highestBlockAtTargetLocation.getY(), highestBlockAtTargetLocation.getZ()));
-
-        double distance = targetLocation.distance(highestBlockAtTargetLocation);
-
-        sendDebugMessage(target, String.format("distance between blocks: %f", distance));
-
-        // If we're further than two blocks, that's too far.
-        return distance > 2d;
-    }
-
-    @AllArgsConstructor
-    public class DropPoint {
-        @Getter private String name;
-        @Getter private Location location;
-        @Getter private Player owner;
-    }
-
-    public class StoredEntity implements ConfigurationSerializable {
-        @Getter private EntityType EntityType;
-        @Getter private String CustomName;
-
-        public StoredEntity(Entity entity){
-            this.EntityType = entity.getType();
-            this.CustomName = entity.getCustomName();
-        }
-
-        public StoredEntity(Map<String, Object> map){
-            this.EntityType = (EntityType)map.get("entityType");
-            this.CustomName = (String)map.get("customName");
-        }
-
-        @Override public Map<String, Object> serialize(){
-            Map<String, Object> map = new HashMap<String, Object>();
-            map.put("entityType", EntityType);
-            map.put("customName", CustomName);
-            return map;
-        }
-
-        @Override public boolean equals(Object o){
-            if (!(o instanceof StoredEntity)){
-                return false;
-            }
-            val compareTo = (StoredEntity)o;
-            
-            return compareTo.getCustomName() == this.CustomName
-                && compareTo.getEntityType() == this.EntityType;
-        }
-    }
-
-    public interface SummonableEntity {
-        public boolean Summon(Player player, Location destination);
-        public String getName();
-    }
-
-    @AllArgsConstructor
-    public class SummonableStoredEntity implements SummonableEntity {
-        @Getter private StoredEntity storedEntity;
-
-        @Override public String getName() {
-            return storedEntity.getCustomName();
-        }
-
-        @Override public boolean Summon(Player player, Location destination){
-            val me = destination.getWorld().spawnEntity(destination, storedEntity.EntityType);
-            me.setCustomName(storedEntity.CustomName);
-            return true;
-        }
-    }
-
-    @AllArgsConstructor
-    public class SummonableRealEntity implements SummonableEntity {
-        @Getter private Entity entity;
-
-        @Override public String getName() {
-            return entity.getCustomName() == null ? entity.getName() : entity.getCustomName();
-        }
-
-        @Override public boolean Summon(Player player, Location destination){
-            ScheduleFultonForEntity(player, entity, entity.getWorld().getBlockAt(destination));
-            return true; // todo: return bool from sched
-        }
-    }
-
-    private class Fulton {
-        @Getter private Player player;
-        @Getter private Entity target;
-        @Getter private Location destination;
-
-        private Entity balloon;
-        private JavaPlugin plugin;
-
-        // config
-        final int numSeconds = 4;
-        final int whenToYankSeconds = 3; // how many seconds in to start the yank.
-        final int numIterationsPerSecond = 8;
-        final Vector beforeYankVector = new Vector(0, 0.04, 0);
-        final Vector afterYankVector = new Vector(0, 6, 0);
-
-        // details
-        final int numIterations = numSeconds * numIterationsPerSecond;
-        final int whenToYankIterations = whenToYankSeconds * numIterationsPerSecond;
-        final int numTicksPerSecond = 20;
-        final int numTicksPerIteration = numTicksPerSecond / numIterationsPerSecond;
-
-        public Fulton(Player player, Entity target, Location destination, JavaPlugin plugin){
-            this.player = player;
-            this.target = target;
-            this.destination = destination;
-            this.plugin = plugin;
-        }
-
-        public void Start(){
-            // this is the point of no return! we *have* to do something with this entity then remove it from fultoningEntities.
-            fultoningEntities.add(target);
-
-            // Assign a custom name so it doesn't get despawned
-            if (target.getCustomName() == null){
-                player.sendMessage("assigning custom name");
-                target.setCustomName(String.format("Fulton-recovered %s", target.getName()));
-                target.setCustomNameVisible(true);
-            }
-
-            target.setGravity(false);
-
-            Entity balloon = target.getWorld().spawnEntity(target.getLocation().clone().add(0, 1.7, 0), EntityType.CHICKEN);
-            balloon.setGravity(false);
-
-            for (int i = 0; i < numIterations; i++){
-                if (i >= whenToYankIterations){
-                    scheduleFultonEffect(target, i * numTicksPerIteration);
-                    scheduleVelocityChange(target, afterYankVector, i * numTicksPerIteration);
-                }
-                else
-                {
-                    scheduleVelocityChange(target, beforeYankVector, i * numTicksPerIteration);
-                }
-
-                if (i >= whenToYankIterations - (numIterationsPerSecond/3)){ // 1/3 of a second earlier, yank the balloon up.
-                    scheduleVelocityChange(balloon, afterYankVector, i * numTicksPerIteration);
-                }
-                else
-                {
-                    scheduleVelocityChange(balloon, beforeYankVector, i * numTicksPerIteration);
-                }
-            }
-
-            // remove the balloon after lifting is done.
-            this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-                public void run() {
-                    balloon.remove();
-                }
-            }, numTicksPerIteration * numIterations);
-
-            scheduleFultonDrop(target, destination, numTicksPerIteration * numIterations);
-        }
-
-        public boolean Validate(){
-            if (target.getWorld() != destination.getWorld()){
-                player.sendMessage("Cannot use Fulton Recovery between worlds.");
-                return false;
-            }
-
-            // Check if sky is unobstructed
-            if (isBlockObstructed(target.getWorld().getBlockAt(target.getLocation()))){
-                player.sendMessage("Cannot use Fulton Recovery without an unobstructed view of the sky above the recipient.");
-                return false;
-            }
-
-            if (fultoningEntities.contains(target)){
-                player.sendMessage("Entity already being fultoned");
-                return false;
-            }
-
-            return true;
-        }
-
-
-        private void scheduleVelocityChange(Entity entity, Vector vector, int delayServerTicks){
-            // 20 ticks per second
-            // one tick is about 0.05 seconds.
-            // https://minecraft.gamepedia.com/Tick
-
-            this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-                public void run() {
-                    if (!entity.isValid()){
-                        sendDebugMessage(entity, "entity not valid while going up");
-                        return;
-                    }
-
-                    entity.setVelocity(vector);
-                }
-            }, delayServerTicks);
-
-        }
-
-        private void scheduleFultonEffect(Entity entity, int delayServerTicks){
-            this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-                public void run() {
-                    Location l = entity.getLocation();
-                    l.getWorld().playEffect(l, Effect.SMOKE, 31);
-                }
-            }, delayServerTicks);
-
-        }
-
-        private void scheduleFultonDrop(Entity entity, Location destination, int delayServerTicks){
-            this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-                public void run() {
-                    val dropHeight = Math.min(255, destination.getY() + 50);
-                    Location teleportDestination = new Location(destination.getWorld(), destination.getX(), dropHeight, destination.getZ());
-                    debugPrintCoordinates(entity.getLocation(), "pre-teleport-location");
-                    debugPrintCoordinates(teleportDestination, "teleportDestination");
-                    entity.teleport(teleportDestination);
-                    entity.setVelocity(new Vector(0, -3, 0));
-                    scheduleSoftLanding(entity, destination, 1);
-                }
-            }, delayServerTicks);
-        }
-
-        private void scheduleSoftLanding(Entity entity, Location destination, int ticksBetween){
-            this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-                double distanceToEngageSoftLand = 3.5;
-                double distanceToRelease = 1.8;
-                public void run() {
-                    //debugPrintCoordinates(entity.getLocation(), "softLanding entity loc");
-                    if (!entity.isValid()){
-                        sendDebugMessage(entity, "uh oh entity not valid");
-                        storeEntity(player, entity);
-                        return;
-                    }
-                    double distanceFromDestination = entity.getLocation().getY() - destination.getY();
-                    if (distanceFromDestination <= distanceToEngageSoftLand){
-                        entity.setVelocity(new Vector(0, -0.06, 0));
-                        entity.setFallDistance(0);
-                    }
-                    else
-                    {
-                        entity.setVelocity(new Vector(0, -3, 0));
-                        entity.setFallDistance(0);
-                    }
-
-                    // if we aren't at the release distance, schedule this again
-                    if (distanceFromDestination > distanceToRelease){
-                        scheduleSoftLanding(entity, destination, ticksBetween);
-                    }
-                    else {
-                        entity.setGravity(true);
-                        entity.setVelocity(new Vector(0, 0.1, 0));
-                        fultoningEntities.remove(entity);
-                    }
-                }
-            }, ticksBetween);
-        }
-
     }
 }

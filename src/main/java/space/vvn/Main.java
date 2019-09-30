@@ -6,8 +6,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import lombok.val;
 import lombok.var;
 
-import space.vvn.FultonController.DropPoint;
-
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
