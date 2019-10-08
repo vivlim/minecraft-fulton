@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.val;
 import space.vvn.DropPoint;
 import space.vvn.FultonController;
+import space.vvn.entityStorage.StoredEntity;
 
 @AllArgsConstructor
 public class SummonableRealEntity implements SummonableEntity {
@@ -27,18 +28,25 @@ public class SummonableRealEntity implements SummonableEntity {
 
     @Override public boolean Summon(Player player, Location destination){
         if (!entity.isValid()){
-            player.sendMessage(String.format("Could not send '%s', it doesn't seem to exist anymore?", entity.getCustomName()));
-            return false;
+            player.sendMessage(String.format("'%s' has despawned, attempting to recreate and send it.", entity.getCustomName()));
+            return RecreateAndSummon(player, destination);
         }
 
         // Check distance from drop point and make sure this is still allowed.
         val distance = entity.getLocation().distance(fromDropPoint.getLocation());
         if (distance > DropPoint.entityRadiusFromDropPoint){
-            player.sendMessage(String.format("Could not send '%s', it is too far from the drop point (distance: %f, max: %d)", entity.getCustomName(), distance, DropPoint.entityRadiusFromDropPoint));
+            player.sendMessage(String.format("Could not send '%s', it has moved too far from the drop point (distance: %f, max: %d)", entity.getCustomName(), distance, DropPoint.entityRadiusFromDropPoint));
             return false;
         }
 
         controller.ScheduleFultonForEntity(player, entity, entity.getWorld().getBlockAt(destination));
         return true; // todo: return bool from sched
+    }
+
+    private boolean RecreateAndSummon(Player player, Location destination){
+        val storedEntity = new StoredEntity(entity);
+        val summonableStoredEntity = new SummonableStoredEntity(storedEntity, controller);
+
+        return summonableStoredEntity.Summon(player, destination);
     }
 }

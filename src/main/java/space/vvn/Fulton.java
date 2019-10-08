@@ -138,7 +138,7 @@ public class Fulton {
         this.plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
             public void run() {
                 if (!entity.isValid()){
-                    Utility.sendDebugMessage(entity, "entity not valid while going up");
+                    Utility.sendDebugMessage(entity, "(Entity despawned while ascending)");
                     return;
                 }
 
@@ -203,7 +203,7 @@ public class Fulton {
             public void run() {
                 //debugPrintCoordinates(entity.getLocation(), "softLanding entity loc");
                 if (!entity.isValid()){
-                    player.sendMessage(String.format("'%s' could not be delivered to the drop point, and is being stored in stasis.", entity.getCustomName()));
+                    player.sendMessage(String.format("'%s' despawned on the way to the drop point, and is being stored in stasis.", entity.getCustomName()));
                     new EntityStorageView(player, entity.getWorld(), plugin).storeEntity(entity);
                     return;
                 }
