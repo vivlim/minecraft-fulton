@@ -24,8 +24,14 @@ public class SummonableStoredEntity implements SummonableEntity {
     }
 
     @Override public boolean Summon(Player player, Location destination){
-        val me = destination.getWorld().spawnEntity(destination, storedEntity.getEntityType());
-        me.setCustomName(storedEntity.getCustomName());
+        // spawn the entity 32 blocks above destination.
+        val entity = controller.CreateAndSoftDropEntity(player, storedEntity.getEntityType(), destination.getBlock(), 32);
+
+        if (entity == null){
+            return false;
+        }
+
+        entity.setCustomName(storedEntity.getCustomName());
 
         // Reach into the storage and remove me from it. This is a reasonable place to do this at the moment, but a bad code smell.
         new EntityStorageView(player, destination.getWorld(), controller.getPlugin()).removeStoredEntity(storedEntity);

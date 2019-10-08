@@ -45,7 +45,7 @@ public class Fulton {
         this.plugin = plugin;
     }
 
-    public void Start(){
+    public void Start(boolean doLiftAndTeleport){
         // this is the point of no return! we *have* to do something with this entity then remove it from fultoningEntities.
         controller.getFultoningEntities().add(target);
 
@@ -55,8 +55,13 @@ public class Fulton {
             //target.setCustomNameVisible(true);
         }
 
-
         target.setGravity(false);
+
+        if (!doLiftAndTeleport){
+            // Simply soft-land the object and return.
+            scheduleSoftLanding(target, destination, 1, 0);
+            return;
+        }
 
         Entity balloon = target.getWorld().spawnEntity(target.getLocation().clone().add(0, 1.7, 0), balloonEntityType);
         balloon.setGravity(false);
@@ -104,6 +109,20 @@ public class Fulton {
 
         if (controller.getFultoningEntities().contains(target)){
             player.sendMessage("Entity already being recovered (or is stuck, maybe cannot reach the destination?)");
+            return false;
+        }
+
+        val passengers = target.getPassengers();
+        var aPassengerIsAPlayer = false;
+        for (val passenger : passengers){
+            if (passenger instanceof Player){
+                aPassengerIsAPlayer = true;
+                break;
+            }
+        }
+
+        if (aPassengerIsAPlayer){
+            player.sendMessage("Players cannot be recovered.");
             return false;
         }
 

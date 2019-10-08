@@ -62,8 +62,28 @@ public class FultonController {
 
         Fulton fulton = new Fulton(this, player, target, destination.getLocation(), this.plugin);
         if (fulton.Validate()){
-            fulton.Start();
+            fulton.Start(true);
         }
+    }
+
+    public Entity CreateAndSoftDropEntity(Player player, EntityType entityType, Block destination, int distanceToStartAbove){
+        if (destination == null){
+            player.sendMessage("A destination has not been set.");
+            return null;
+        }
+
+        if (Utility.isBlockObstructed(destination)){
+            player.sendMessage("Cannot drop here, the sky is obstructed.");
+            return null;
+        }
+
+        // spawn the entity above destination.
+        val aboveDestination = destination.getLocation().add(0, distanceToStartAbove, 0);
+        val entity = destination.getWorld().spawnEntity(aboveDestination, entityType);
+
+        Fulton fulton = new Fulton(this, player, entity, destination.getLocation(), this.plugin);
+        fulton.Start(false);
+        return entity;
     }
 
     public void SetHome(Player player, Block newHome){
