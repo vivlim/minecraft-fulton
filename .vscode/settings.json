@@ -1,4 +1,4 @@
 {
     "java.configuration.updateBuildConfiguration": "interactive",
-    "java.jdt.ls.vmargs": "-javaagent:\"C:/Users/vivvn/.m2/repository/org/projectlombok/lombok/1.18.10/lombok-1.18.10.jar\" -Xbootclasspath/a:\"C:/Users/vivvn/.m2/repository/org/projectlombok/lombok/1.18.10/lombok-1.18.10.jar\" -noverify -Xmx1G -XX:+UseG1GC -XX:+UseStringDeduplication"
+    "java.jdt.ls.vmargs": "-javaagent:\"C:/Users/vivvn/.m2/repository/org/projectlombok/lombok/1.18.10/lombok-1.18.10.jar\"  -noverify -Xmx1G -XX:+UseG1GC -XX:+UseStringDeduplication"
 }
