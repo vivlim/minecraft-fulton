@@ -35,7 +35,8 @@ At the time of writing, if you summon an entity in stasis it will simply appear 
 * Horses are also very handy.
 
 ## Videos
-Some WIP videos of this as I develop it.
+A polished, trailer-y video: https://youtu.be/baQHAmsxeec
 
+Some WIP videos:
 * https://www.youtube.com/watch?v=dagX8nclyOA&feature=youtu.be
 * https://www.youtube.com/watch?v=nRIB5DMpp30&feature=youtu.be
